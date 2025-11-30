@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 # ===================== USER SETTINGS =====================
 # ticker accepts either a stock ticker symbol (for yfinance) or a path to a CSV file
-# csv files in the data directory were dowloaded from https://curvo.eu/backtest/en
+# .csv files in the data directory were dowloaded from https://curvo.eu/backtest/en
 # .pkl files in the cache directory were downloaded via yfinance
 
 #ticker = "^GSPC"    # S&P 500 index (much longer, WARNING: does not include dividends)
@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 #ticker = "^GDAXI"   # DAX index including reinvested dividends (total return)
 ticker = "data/msci_world_curvo.csv"  # CSV file (needs Date column + price column)
 duration_years = 15 # Number of years for each return period
+bin_width = 1.0  # Width of histogram bins in percentage points (e.g., 1.0 = 1% bins)
 plot_name = "" # Optional; sets custom name in plot title when not empty
 
 scramble_years = True # Pick random years (True: Standard Bootstrap) instead of sequential years (False: Block Bootstrap)
@@ -30,12 +31,15 @@ random_seed = None  # Random seed for reproducibility (None for random, or any i
 # Investments involve risks, including the risk of capital loss.
 # This calculator does not constitute financial advice and I am not a financial advisor.
 # I accept no liability for losses or damages arising from the use of this program.
+# Generative AI tools (Clause Sonnet 4.5) were used in the creation of this program.
 
 # Ich übernehme keine Gewähr auf die Richtigkeit der gezeigten Daten. Am besten selber nochmal nachrechnen.
 # Die Nutzung dieses Rechners folgt auf eigene Verantwortung.
 # Investitionen sind mit Risiken verbunden, einschließlich des Risikos von Kapitalverlusten.
 # Dieser Rechner stellt keine Finanzberatung dar und ich bin kein Finanzberater.
 # Ich übernehme keine Haftung für Verluste oder Schäden, die aus der Nutzung dieses Programms entstehen.
+# Bei der Erstellung dieses Programms wurden generative KI-Tools (Clause Sonnet 4.5) verwendet.
+# ========================================================
 
 
 plot_name = plot_name if plot_name else ticker
@@ -416,9 +420,9 @@ def plot_returns_histogram(returns, duration_years, ticker, best_period, worst_p
         '99th': np.percentile(returns_array, 99)
     }
     
-    # Create histogram
     plt.figure(figsize=(14, 8))
-    plt.hist(returns_array, bins=30, alpha=0.7, color='steelblue', edgecolor='black', density=True)
+    bins = np.arange(np.floor(returns_array.min()), np.ceil(returns_array.max()) + bin_width, bin_width)
+    plt.hist(returns_array, bins=bins, alpha=0.7, color='steelblue', edgecolor='black', density=True)
     
     # Add percentile lines
     colors = {'1st': 'darkred', '10th': 'red', '25th': 'orange', '50th (Median)': 'green', 
@@ -435,11 +439,11 @@ def plot_returns_histogram(returns, duration_years, ticker, best_period, worst_p
     #           linewidth=3, label=f'Overall: {overall_return*100:.1f}% p.a.')
     
     plt.xlabel('Annualized Return (% p.a.)', fontsize=12)
-    plt.ylabel('Probability Density (%)', fontsize=12)
+    plt.ylabel('Probability (%)', fontsize=12)
     
-    # Format y-axis as percentage
+    # Format y-axis as percentage (density * bin_width gives probability)
     ax = plt.gca()
-    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.1f}'))
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*bin_width*100:.1f}'))
     
     method_text = f"{scramble_iteration:_}".replace("_", " ") + " iterations" if scramble_years else "Historical Sequenence"
     date_range = f" data from {first_date.strftime('%Y-%m-%d')} to {last_date.strftime('%Y-%m-%d')}" if first_date and last_date else ""
