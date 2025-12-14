@@ -11,7 +11,7 @@ import time
 
 # ===================== USER SETTINGS =====================
 # ticker accepts either a stock ticker symbol (for yfinance) or a path to a CSV file
-# .csv files in the data directory were dowloaded from https://curvo.eu/backtest/en
+# .csv files in the data directory were dowloaded from https://curvo.eu/backtest/en and https://www.macrotrends.net/1333/historical-gold-prices-100-year-chart 
 # .pkl files in the cache directory were downloaded via yfinance
 
 #ticker = "^GSPC"    # S&P 500 index (much longer, WARNING: does not include dividends)
@@ -23,7 +23,7 @@ bin_width = 1.0  # Width of histogram bins in percentage points (e.g., 1.0 = 1% 
 plot_name = "MSCI World" # Optional; sets custom name in plot title when not empty
 
 block_bootstrap = True # True: Standard Bootstrap (sample randomly); False: Block Bootstrap (sequential years)
-bootstrap_samples = 5e8  # Number of samples for Standard Bootstrap (5e8 is approximate maximum for 32GB RAM)
+bootstrap_samples = 5e6  # Number of samples for Standard Bootstrap (5e8 is approximate maximum for 32GB RAM)
 use_replace = True  # Whether to pick years with replacement (only for Standard Bootstrap): Some debate, but usually done with replacement
 
 percentiles = [1, 10, 25, 50, 75, 90, 99]  # Percentiles to show as lines on the histogram (e.g., [1, 10, 50, 90, 99])
@@ -42,14 +42,14 @@ chunk_size = 1e5    # Uses chunking for performance optimization; WARNING: DON'T
 # Investments involve risks, including the risk of capital loss.
 # This calculator does not constitute financial advice and I am not a financial advisor.
 # I accept no liability for losses or damages arising from the use of this program.
-# Generative AI tools (Clause Sonnet 4.5) were used in the creation of this program.
+# Generative AI tools (Claude Sonnet 4.5) were used in the creation of this program.
 
 # Ich übernehme keine Gewähr auf die Richtigkeit der gezeigten Daten. Am besten selber nochmal nachrechnen.
 # Die Nutzung dieses Rechners folgt auf eigene Verantwortung.
 # Investitionen sind mit Risiken verbunden, einschließlich des Risikos von Kapitalverlusten.
 # Dieser Rechner stellt keine Finanzberatung dar und ich bin kein Finanzberater.
 # Ich übernehme keine Haftung für Verluste oder Schäden, die aus der Nutzung dieses Programms entstehen.
-# Bei der Erstellung dieses Programms wurden generative KI-Tools (Clause Sonnet 4.5) verwendet.
+# Bei der Erstellung dieses Programms wurden generative KI-Tools (Claude Sonnet 4.5) verwendet.
 # ========================================================
 
 
@@ -517,9 +517,8 @@ def plot_returns_histogram(returns_array, duration_years, ticker, best_period, w
     array_size = returns_array.nbytes
     n_chunks = num_threads if num_threads is not None else os.cpu_count()
     
-    # Estimate memory needed for parallel sort (chunks + sorted_chunks + concatenation + final sort)
-    estimated_memory_needed = array_size * 4  # Conservative estimate
-    use_max_available = 0.75  # Use up to 75% of available memory
+    estimated_memory_needed = array_size * 3 # Estimate memory needed for parallel sort
+    use_max_available = 0.9  # Use up to 90% of available memory
     
     if estimated_memory_needed < available_memory * use_max_available:
         try:
@@ -532,11 +531,13 @@ def plot_returns_histogram(returns_array, duration_years, ticker, best_period, w
             
             with Pool(processes=num_threads) as pool:
                 sorted_chunks = pool.map(np.sort, chunks)
-            print("Parallel sorting completed.")
-            # Merge sorted chunks (k-way merge)
+            del chunks  # Free memory after pool processing
+            # Merge sorted chunks
             print("Merging sorted chunks...")
             sorted_returns = np.concatenate(sorted_chunks)
+            del sorted_chunks  # Free memory before final sort
             sorted_returns.sort(kind='mergesort')  # Final merge sort is faster on partially sorted data
+            print("Parallel sorting completed.")
         except Exception as e:
             print(f"Parallel sorting failed ({e}), falling back to standard sort...")
             sorted_returns = np.sort(returns_array)
@@ -625,7 +626,7 @@ def plot_returns_histogram(returns_array, duration_years, ticker, best_period, w
     std_dev = np.std(returns_array)
     
     # Calculate probabilities for user-defined thresholds
-    prob_lines = ["\nSome probabilities for:\n"]
+    prob_lines = ["\nProbabilities for:\n"]
 
     for threshold in probability_thresholds:
         prob = np.sum(returns_array >= threshold) / len(returns_array) * 100
