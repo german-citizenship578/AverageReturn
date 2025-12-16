@@ -39,7 +39,7 @@ def detect_crashes(
     df: pd.DataFrame,
     date_col: str,
     value_col: str,
-    crash_threshold: float = 0.20,
+    crash_threshold: float = 0.10,
     eps: float = 1e-12,
 ) -> List[Crash]:
     # Crash definition:
